@@ -72,7 +72,9 @@ class DownloadViewModel: ObservableObject {
         await log("  [1/3] 다운로드 중…\n")
         let ffmpegDir = URL(fileURLWithPath: ffmpeg).deletingLastPathComponent().path
 
-        let (dlOut, dlOK) = await run(ytdlp, args: [
+        var dlOut = ""
+        var dlOK = false
+        let dlBase: [String] = [
             "--remote-components", "ejs:github",
             "--ffmpeg-location", ffmpegDir,
             "-x", "--audio-format", "mp3", "--audio-quality", "0",
@@ -80,9 +82,37 @@ class DownloadViewModel: ObservableObject {
             "-o", "%(title)s.%(ext)s",
             "--paths", "home:\(tempDir)",
             "--print", "after_move:filepath",
-            url,
-        ])
-        guard dlOK else { await log("❌ 다운로드 실패\n"); return false }
+        ]
+
+        // Safari 쿠키 DB는 macOS TCC로 앱·yt-dlp에서 읽기 불가한 경우가 많음 → Chrome 등 순서대로 시도
+        let cookieBrowsers = ["chrome", "safari", "firefox", "edge", "brave"]
+        for browser in cookieBrowsers {
+            let (out, ok) = await run(ytdlp, args: dlBase + [
+                "--cookies-from-browser", browser,
+                url,
+            ])
+            dlOut = out
+            dlOK = ok
+            if ok { break }
+            let cookieBlocked = out.contains("Operation not permitted")
+                || out.contains("could not find")
+                || out.contains("Cookies.binarycookies")
+            if !cookieBlocked { break }
+            await log("  ⚠️ \(browser) 쿠키 사용 불가, 다른 방법 시도…\n")
+        }
+
+        if !dlOK {
+            await log("  (브라우저 쿠키 없이 재시도…)\n")
+            let (out, ok) = await run(ytdlp, args: dlBase + [url])
+            dlOut = out
+            dlOK = ok
+        }
+
+        guard dlOK else {
+            await log("❌ 다운로드 실패\n")
+            await log("  💡 Chrome에서 YouTube에 로그인한 뒤 다시 시도해 보세요.\n")
+            return false
+        }
 
         let dlPath = dlOut
             .components(separatedBy: .newlines)
@@ -162,6 +192,13 @@ class DownloadViewModel: ObservableObject {
                 pipe.fileHandleForReading.readabilityHandler = nil
                 cont.resume(returning: (collected, p.terminationStatus == 0))
             }
+            proc.environment = {
+                var env = ProcessInfo.processInfo.environment
+                let extra = "/opt/homebrew/bin:/usr/local/bin"
+                env["PATH"] = extra + ":" + (env["PATH"] ?? "/usr/bin:/bin")
+                return env
+            }()
+
             do    { try proc.run() }
             catch { cont.resume(returning: ("", false)) }
         }

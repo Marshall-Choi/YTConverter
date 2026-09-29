@@ -8,21 +8,17 @@ YouTube 링크를 붙여넣으면 MP3로 변환, 볼륨 정규화(-14 LUFS), 제
 brew install yt-dlp ffmpeg
 ```
 
-## 실행
+YouTube가 403 등으로 막히면 **Chrome**에서 youtube.com에 로그인해 두면 앱이 Chrome 쿠키로 우회합니다. (Safari 쿠키는 macOS 보안상 앱에서 읽지 못하는 경우가 많습니다.)
+
+## 빌드·설치
+
+프로젝트 루트에서 한 번 실행하면 빌드 후 **`/Applications/YTConverter.app` 하나만** 설치됩니다. (예전 DerivedData 경로의 복사본은 제거되어 Finder/Spotlight에 앱이 두 개 보이지 않습니다.)
 
 ```bash
-open ~/Library/Developer/Xcode/DerivedData/YTConverter-*/Build/Products/Debug/YTConverter.app
+./scripts/build-and-install.sh
 ```
 
-또는 Xcode에서 `YTConverter.xcodeproj` 열고 **⌘R**
-
-## Applications 폴더에 설치 (한 번만)
-
-```bash
-cp -R ~/Library/Developer/Xcode/DerivedData/YTConverter-*/Build/Products/Debug/YTConverter.app /Applications/
-```
-
-이후에는 Spotlight(⌘Space)에서 `YTConverter` 검색으로 바로 실행 가능
+Xcode에서 개발할 때는 **⌘R** 로 실행해도 되지만, Spotlight로 실행할 앱은 위 스크립트로 `/Applications`에 맞춰 두는 것을 권장합니다.
 
 ## 사용법
 
